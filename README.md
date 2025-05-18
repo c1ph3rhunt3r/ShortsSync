@@ -1,6 +1,6 @@
-# TikTok to YouTube Bridge
+# ShortsSync
 
-An automated system for scraping popular TikTok videos and uploading them to YouTube.
+An automated system for scraping popular TikTok videos and uploading them to YouTube Shorts.
 
 > **Note**: This project is still under active development. Updates and changes may be made periodically.
 
@@ -24,8 +24,8 @@ An automated system for scraping popular TikTok videos and uploading them to You
 
 1. Clone this repository
 ```bash
-git clone https://github.com/yourusername/tiktok-youtube-bridge.git
-cd tiktok-youtube-bridge
+git clone https://github.com/yourusername/shortssync.git
+cd shortssync
 ```
 
 2. Create and activate a virtual environment
@@ -108,4 +108,4 @@ Access the monitoring dashboard at http://localhost:8080 when the application is
 
 - If authentication fails, delete the token files and restart the application
 - For video download issues, ensure FFmpeg is properly installed and accessible
-- Check logs in `tiktok_to_youtube.log` for detailed error information 
+- Check logs in `shortssync.log` for detailed error information 
