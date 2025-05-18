@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific
+client-id.txt
+*.session
+downloaded_videos/
+processed_videos/
+*.mp4
+*.webm
+*.mkv
+*.log
+.env
+config.json
+channels*.json
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Log files
+*.log
+
+# Database files
+*.db
+*.sqlite3
+
+# Sensitive data
+client_secrets.json
+*.pickle
+youtube_oauth_token.json
+credentials.json
+youtube_token.json
+Bridge.zip
+Bridge_key.pem
+# Downloaded videos and media
+downloads/
+processed/
+uploaded/
+
+# YouTube API quota data
+youtube_api_quota.json
+
+# TikTok data
+data/
+downloads/
+processed/
+tiktok_to_youtube.log 
+tiktok_to_youtube.log 

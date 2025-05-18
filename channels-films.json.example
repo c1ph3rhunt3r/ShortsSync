@@ -1,0 +1,13 @@
+{
+  "channels": [
+    "@example_films1",
+    "@example_films2"
+  ],
+  "settings": {
+    "run_interval": 259200,
+    "top": 2,
+    "limit": 30,
+    "view_threshold": 20000,
+    "publish_days": [0, 4]
+  }
+} 

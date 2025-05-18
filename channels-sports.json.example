@@ -1,0 +1,14 @@
+{
+  "channels": [
+    "@example_sports1",
+    "@example_sports2",
+    "@example_sports3"
+  ],
+  "settings": {
+    "run_interval": 259200,
+    "top": 2,
+    "limit": 30,
+    "view_threshold": 15000,
+    "publish_days": [1, 3, 5]
+  }
+} 

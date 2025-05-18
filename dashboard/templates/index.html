@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok to YouTube Bridge Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4a6cf7;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --background-color: #f5f7ff;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .status-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-running {
+            background-color: #28a745;
+        }
+        .status-paused {
+            background-color: #ffc107;
+        }
+        .status-error {
+            background-color: #dc3545;
+        }
+        .token-valid {
+            color: #28a745;
+        }
+        .token-invalid {
+            color: #dc3545;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="bi bi-bridge"></i> TikTok to YouTube Bridge</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="nav-channels">Channels</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="nav-settings">Settings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="nav-logs">Logs</a>
+                    </li>
+                </ul>
+                <span class="navbar-text ms-auto">
+                    Last updated: <span id="timestamp">{{ timestamp }}</span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <!-- System Status Section -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="bi bi-pc-display"></i> System Status</h5>
+                        <button type="button" class="btn btn-sm btn-outline-primary refresh-status">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body" id="system-status-container">
+                        {% if system_status %}
+                        <div>
+                            <p>
+                                <span class="status-indicator status-{{ 'running' if system_status.status == 'running' else 'paused' if system_status.status == 'paused' else 'error' }}"></span>
+                                Status: <strong>{{ system_status.status|capitalize }}</strong>
+                            </p>
+                            <p>Next scheduled run: {{ system_status.next_run }}</p>
+                            {% if system_status.cpu_usage is defined %}
+                            <p>CPU: {{ system_status.cpu_usage }}%</p>
+                            {% endif %}
+                            {% if system_status.memory_usage is defined %}
+                            <p>Memory: {{ system_status.memory_usage }}%</p>
+                            {% endif %}
+                            {% if system_status.disk_usage is defined %}
+                            <p>Disk: {{ system_status.disk_usage }}%</p>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">System status not available</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Token Status -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-key"></i> YouTube API Token Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="token-status">
+                            {% if real_token %}
+                            <p>
+                                <i class="bi {{ 'bi-check-circle-fill token-valid' if real_token.valid else 'bi-x-circle-fill token-invalid' }}"></i>
+                                Status: <strong>{{ 'Valid' if real_token.valid else 'Invalid' }}</strong>
+                            </p>
+                            <p>Message: {{ real_token.message }}</p>
+                            {% if real_token.expiry %}
+                            <p>Expires: {{ real_token.expiry }}</p>
+                            {% endif %}
+                            <p>Has refresh token: {{ 'Yes' if real_token.has_refresh else 'No' }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="mt-3">
+                            <a href="#" class="btn btn-primary" id="refresh-auth-btn">
+                                <i class="bi bi-shield-lock"></i> Refresh Authentication
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- YouTube API Quota -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-speedometer2"></i> YouTube API Quota</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="quota-status">
+                            {% if quota_data %}
+                                {% set today = quota_data.keys()|list|last %}
+                                {% if today in quota_data %}
+                                    <div class="progress mb-3" style="height: 30px;">
+                                        {% set used_percent = (quota_data[today].used / 10000 * 100)|int %}
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ used_percent }}%"
+                                             data-percent="{{ used_percent }}">
+                                            {{ used_percent }}%
+                                        </div>
+                                    </div>
+                                    <script>
+                                        // Apply appropriate color class based on percentage
+                                        (function() {
+                                            var progressBar = document.querySelector('[data-percent="{{ used_percent }}"]');
+                                            var percent = parseInt(progressBar.getAttribute('data-percent'));
+                                            if (percent < 50) {
+                                                progressBar.classList.add('bg-success');
+                                            } else if (percent < 80) {
+                                                progressBar.classList.add('bg-warning');
+                                            } else {
+                                                progressBar.classList.add('bg-danger');
+                                            }
+                                        })();
+                                    </script>
+                                    <p>Used: {{ quota_data[today].used }} / 10,000 units</p>
+                                    <p>Remaining: {{ quota_data[today].remaining }} units</p>
+                                    <p>Last updated: {{ quota_data[today].last_updated }}</p>
+                                    
+                                    {% if quota_data[today].operations %}
+                                    <h6 class="mt-3">Operation Costs</h6>
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Operation</th>
+                                                <th>Count</th>
+                                                <th>Cost</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for op, data in quota_data[today].operations.items() %}
+                                            <tr>
+                                                <td>{{ op }}</td>
+                                                <td>{{ data.count }}</td>
+                                                <td>{{ data.cost }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    {% endif %}
+                                {% else %}
+                                    <p>No quota data for today</p>
+                                {% endif %}
+                            {% else %}
+                                <p class="text-muted">YouTube API quota data not available</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-sliders"></i> Control Panel</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="control-form">
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-success control-btn" data-action="restart">
+                                    <i class="bi bi-arrow-repeat"></i> Restart
+                                </button>
+                                <button type="button" class="btn btn-warning control-btn" data-action="pause">
+                                    <i class="bi bi-pause-circle"></i> Pause
+                                </button>
+                                <button type="button" class="btn btn-primary control-btn" data-action="resume">
+                                    <i class="bi bi-play-circle"></i> Resume
+                                </button>
+                            </div>
+                        </form>
+                        <div id="control-message" class="mt-3"></div>
+                </div>
+            </div>
+
+                <!-- File Cleanup Statistics -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-trash"></i> File Cleanup</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="cleanup-stats">
+                            {% if cleanup_data and cleanup_data.operations %}
+                                <div class="d-flex justify-content-between mb-3">
+                                    <div class="text-center">
+                                        <h3>{{ cleanup_data.total_files_removed }}</h3>
+                                        <p class="text-muted">Total Files Removed</p>
+                            </div>
+                                    <div class="text-center">
+                                        <h3>{{ cleanup_data.total_space_freed_mb|round(2) }} MB</h3>
+                                        <p class="text-muted">Total Space Freed</p>
+                    </div>
+                </div>
+
+                                <h6>Recent Cleanup Operations</h6>
+                                <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                            <th>Time</th>
+                                            <th>Directory</th>
+                                            <th>Files</th>
+                                            <th>Space (MB)</th>
+                                    </tr>
+                                </thead>
+                                    <tbody>
+                                        {% for op in cleanup_data.operations %}
+                                        <tr>
+                                            <td>{{ op.timestamp }}</td>
+                                            <td>{{ op.directory }}</td>
+                                            <td>{{ op.files_removed }}</td>
+                                            <td>{{ op.space_freed_mb|round(2) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                                <p class="text-muted">No cleanup operations recorded yet</p>
+                            {% endif %}
+                        </div>
+                        </div>
+                    </div>
+                </div>
+                
+            <!-- Add channel groups and dynamic thresholds to the right column -->
+            <div class="col-md-6">
+                <!-- Statistics Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-graph-up"></i> Processing Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3" id="stats-totals">
+                            <div class="col-md-4 text-center">
+                                <h3>{{ totals.total_processed or 0 }}</h3>
+                                <p class="text-muted">Videos Processed</p>
+                                    </div>
+                            <div class="col-md-4 text-center">
+                                <h3>{{ totals.total_uploaded or 0 }}</h3>
+                                <p class="text-muted">Videos Uploaded</p>
+                                </div>
+                            <div class="col-md-4 text-center">
+                                <h3>{{ totals.total_failed or 0 }}</h3>
+                                <p class="text-muted">Failed Uploads</p>
+                                    </div>
+                                            </div>
+                                </div>
+                            </div>
+                            
+                <!-- Channel Groups -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-diagram-3"></i> Channel Groups</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="channel-groups">
+                            {% if groups_data %}
+                                <div class="row">
+                                    {% for group_name, group_info in groups_data.items() %}
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card">
+                                            <div class="card-header bg-light">
+                                                <strong>Group {{ group_name }}</strong>
+                                    </div>
+                                            <div class="card-body p-2">
+                                                <p class="mb-1"><small>Channels: {{ group_info.channel_count }}</small></p>
+                                                <p class="mb-1"><small>Publish days: {{ group_info.publish_days|join(', ') }}</small></p>
+                                                {% if group_info.last_run %}
+                                                <p class="mb-1"><small>Last run: {{ group_info.last_run }}</small></p>
+                                                {% endif %}
+                                                {% if group_info.next_run %}
+                                                <p class="mb-1"><small>Next run: {{ group_info.next_run }}</small></p>
+                                                {% endif %}
+                                </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                            </div>
+                            
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-primary" id="run-group-btn">
+                                    Run Group Now
+                                </button>
+                                <select class="form-select form-select-sm d-inline-block w-auto ms-2" id="group-select">
+                                    <option value="">Select Group</option>
+                                    {% for group_name in groups_data.keys() %}
+                                    <option value="{{ group_name }}">Group {{ group_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No channel groups configured</p>
+                            <p>Configure channel groups by creating channels-sports.json, channels-misc.json, and channels-films.json files.</p>
+                        {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dynamic View Thresholds -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-graph-up-arrow"></i> Dynamic View Thresholds</h5>
+                                    </div>
+                    <div class="card-body">
+                        <div id="thresholds-data">
+                            {% if thresholds_data %}
+                                        <div class="table-responsive">
+                                    <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Channel</th>
+                                                <th>Group</th>
+                                                <th>Size</th>
+                                                <th>Threshold</th>
+                                                <th>Avg Views</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                            {% for channel in thresholds_data %}
+                                            <tr>
+                                                <td>{{ channel.channel }}</td>
+                                                <td>{{ channel.group }}</td>
+                                                <td>
+                                                    <span class="badge
+                                                        {% if channel.channel_size == 'small' %}bg-success
+                                                        {% elif channel.channel_size == 'medium' %}bg-primary
+                                                        {% else %}bg-danger{% endif %}">
+                                                        {{ channel.channel_size }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ channel.threshold|int }}</td>
+                                                <td>{{ channel.avg_views|int }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                                </tbody>
+                                            </table>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <h6>How thresholds are calculated:</h6>
+                                    <ul class="small">
+                                        <li><strong>Small channels</strong> (<20K avg views): 70% of average views, min 3K</li>
+                                        <li><strong>Medium channels</strong> (20K-100K avg views): 80% of median views, min 8K</li>
+                                        <li><strong>Large channels</strong> (>100K avg views): 70% of 75th percentile views, min 15K</li>
+                </ul>
+                            </div>
+                            {% else %}
+                                <p class="text-muted">No threshold data available</p>
+                                <p>Run the application with some channels to calculate dynamic thresholds.</p>
+                            {% endif %}
+                            </div>
+                            </div>
+                                </div>
+                            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Refresh system status
+            function refreshSystemStatus() {
+                $.get('/api/stats', function(data) {
+                    $('#system-status-container').load(location.href + ' #system-status-container>*');
+                    $('#token-status').load(location.href + ' #token-status>*');
+                    $('#stats-totals').load(location.href + ' #stats-totals>*');
+                    $('#timestamp').text(new Date().toLocaleString());
+                });
+            }
+            
+            // Refresh uploads
+            function refreshUploads() {
+                $.get('/api/uploads', function(data) {
+                    $('#recent-uploads-table').load(location.href + ' #recent-uploads-table>*');
+                });
+            }
+            
+            // Refresh quota data
+            function refreshQuotaData() {
+                $.get('/api/quota', function(data) {
+                    // Update the quota section
+                    $('#quota-status').load(location.href + ' #quota-status>*');
+                });
+            }
+            
+            // Refresh threshold data
+            function refreshThresholdData() {
+                $.get('/api/thresholds', function(data) {
+                    $('#thresholds-data').load(location.href + ' #thresholds-data>*');
+                });
+            }
+            
+            // Refresh cleanup data
+            function refreshCleanupData() {
+                $.get('/api/cleanup', function(data) {
+                    $('#cleanup-stats').load(location.href + ' #cleanup-stats>*');
+                });
+            }
+            
+            // Refresh groups data
+            function refreshGroupsData() {
+                $.get('/api/groups', function(data) {
+                    $('#channel-groups').load(location.href + ' #channel-groups>*');
+                });
+            }
+            
+            // Refresh all data
+            $('.refresh-status').click(function() {
+                refreshSystemStatus();
+                refreshUploads();
+                refreshQuotaData();
+                refreshThresholdData();
+                refreshCleanupData();
+                refreshGroupsData();
+            });
+            
+            // Control button action
+            $('.control-btn').click(function() {
+                const action = $(this).data('action');
+                $('#control-message').html('<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>');
+                
+                $.post('/controls', { action: action }, function(response) {
+                    $('#control-message').html(`<div class="alert alert-${response.status === 'success' ? 'success' : 'danger'}">${response.message}</div>`);
+                    
+                    // Refresh system status after control action
+                    refreshSystemStatus();
+                });
+            });
+            
+            // Run group button
+            $(document).on('click', '#run-group-btn', function() {
+                const group = $('#group-select').val();
+                if (group) {
+                    if (confirm(`Are you sure you want to run Group ${group} now?`)) {
+                        $.post('/controls', {
+                            action: 'run_group',
+                            group: group
+                        }, function(response) {
+                            $('#control-message').html(
+                                `<div class="alert alert-${response.status === 'success' ? 'success' : 'danger'}">${response.message}</div>`
+                            );
+                        });
+                    }
+                    } else {
+                    alert('Please select a group');
+                }
+            });
+            
+            // View video button
+            $(document).on('click', '.view-video', function() {
+                const youtubeId = $(this).data('youtube-id');
+                $('#youtube-embed').html(`<iframe width="100%" height="315" src="https://www.youtube.com/embed/${youtubeId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`);
+                $('#videoModal').modal('show');
+            });
+            
+            // Refresh authentication
+            $('#refresh-auth-btn').click(function() {
+                window.location.href = '/authenticate';
+            });
+            
+            // Set refresh intervals
+            setInterval(refreshSystemStatus, 60000); // Every minute
+            setInterval(refreshUploads, 60000); // Every minute
+            setInterval(refreshQuotaData, 60000); // Every minute
+            setInterval(refreshThresholdData, 300000); // Every 5 minutes
+            setInterval(refreshCleanupData, 300000); // Every 5 minutes
+            setInterval(refreshGroupsData, 300000); // Every 5 minutes
+        });
+    </script>
+</body>
+</html> 

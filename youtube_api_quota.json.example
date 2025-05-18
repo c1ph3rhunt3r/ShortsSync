@@ -1,0 +1,17 @@
+{
+  "2023-12-01": {
+    "used": 3250,
+    "remaining": 6750,
+    "last_updated": "2023-12-01 15:45:22",
+    "operations": {
+      "video_upload": {
+        "count": 2,
+        "cost": 3200
+      },
+      "list_videos": {
+        "count": 5,
+        "cost": 50
+      }
+    }
+  }
+} 

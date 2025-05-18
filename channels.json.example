@@ -1,0 +1,14 @@
+{
+  "channels": [
+    "@example_channel1",
+    "@example_channel2",
+    "@example_channel3"
+  ],
+  "settings": {
+    "run_interval": 259200,
+    "top": 2,
+    "limit": 30,
+    "view_threshold": 10000,
+    "publish_days": [0, 2, 4, 6]
+  }
+} 
