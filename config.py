@@ -97,7 +97,7 @@ PROXY_SETTINGS = {
 # Logging settings
 LOGGING = {
     'level': 'INFO',
-    'log_file': 'tiktok_to_youtube.log',
+    'log_file': 'shortssync.log',
     'log_format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 }
 

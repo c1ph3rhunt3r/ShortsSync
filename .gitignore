@@ -80,5 +80,6 @@ youtube_api_quota.json
 data/
 downloads/
 processed/
-tiktok_to_youtube.log 
+tiktok_to_youtube.log
+shortssync.log
 tiktok_to_youtube.log 
